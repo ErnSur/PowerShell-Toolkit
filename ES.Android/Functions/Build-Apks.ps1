@@ -1,44 +1,41 @@
 function Build-APKS {
+    [CmdletBinding()]
+    [OutputType([string])]
     param (
         [Parameter(Mandatory, ValueFromPipeline)]
         [string] $AabPath,
+        [Parameter(ParameterSetName = "Keystore", Mandatory)]
         [string] $KeystorePath,
+        [Parameter(ParameterSetName = "Keystore", Mandatory)]
         [string] $KeystorePass,
+        [Parameter(ParameterSetName = "Keystore", Mandatory)]
         [string] $KeystoreAlias,
+        [Parameter(ParameterSetName = "Keystore")]
         [string] $KeyPass,
         [string] $BundletoolArgs,
         [switch] $Force
     )
+    process {
+        $apksPath = [io.path]::ChangeExtension($AabPath, ".apks")
+        Write-Host "Extracting apks" -ForegroundColor Yellow
+        if (!$Force -and (Test-Path $apksPath)) {
+            Write-Error "$apksPath already exists."
+            return $apksPath
+        }
+        $arg = @{
+            'KeystorePath' = "--ks=""$KeystorePath"""
+            'KeystorePass' = "--ks-pass=""pass:$KeystorePass"""
+            'KeystoreAlias' = "--ks-key-alias=""$KeystoreAlias"""
+            'KeyPass' = "--key-pass=""pass:$KeyPass"""
+            'Force' = "--overwrite"
+            'BundletoolArgs' = "$BundletoolArgs"
+        }
 
-    $apksPath = [io.path]::ChangeExtension($AabPath, ".apks")
-    Write-Output "Extracting apks" -ForegroundColor Yellow
-    if (!$Force -and (Test-Path $apksPath)) {
-        Write-Output "$apksPath already exists."
+        $command = "bundletool build-apks --bundle=""$AabPath"" --output=""$apksPath"" "
+        $command += $arg.getenumerator() | Where-Object { $PSBoundParameters.ContainsKey($_.Key) } | Select-Object -ExpandProperty Value | Join-String -Separator " "
+        & $command
+
+        Write-Host "Build apks finished"
         return $apksPath
     }
-
-    $command = "bundletool build-apks --bundle=""$AabPath"" --output=""$apksPath"" "
-    if ($PSBoundParameters.ContainsKey('KeystorePath')) {
-        $command += "--ks=""$KeystorePath"" "
-    }
-    if ($PSBoundParameters.ContainsKey('KeystorePass')) {
-        $command += "--ks-pass=""pass:$KeystorePass"" "
-    }
-    if ($PSBoundParameters.ContainsKey('KeystoreAlias')) {
-        $command += "--ks-key-alias=""$KeystoreAlias"" "
-    }
-    if ($PSBoundParameters.ContainsKey('KeyPass')) {
-        $command += "--key-pass=""pass:$KeyPass"" "
-    }
-    if ($PSBoundParameters.ContainsKey('Force')) {
-        $command += "--overwrite "
-    }
-    if ($PSBoundParameters.ContainsKey('BundletoolArgs')) {
-        $command += "$BundletoolArgs "
-    }
-    Invoke-Expression $command
-    $aabFileName = Split-Path $AabPath -leaf
-
-    Write-Output "Exported $aabFileName to $apksPath"
-    return $apksPath
 }
