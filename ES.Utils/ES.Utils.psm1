@@ -71,3 +71,11 @@ function Remove-EmptyFolder($path)
         Remove-Item -Force -Recurse:$removeHiddenFiles -LiteralPath $Path -WhatIf:$whatIf
     }
 }
+
+function Clear-Console {
+    <#
+    .SYNOPSIS
+     Clears the terminal (console) screen as well as the scrollback buffer.
+    #>
+    [Console]::Write("`e[2J`e[3J`e[H")
+}
