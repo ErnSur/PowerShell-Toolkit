@@ -166,7 +166,7 @@ function Build-APKS {
     return $apksPath
 }
 
-function Initialize-Module {
+function Initialize-SDKPath {
     if($null -eq $env:AndroidSDK){
         $env:AndroidSDK = Get-DefaultSDKPath
     }
@@ -182,4 +182,4 @@ function Initialize-Module {
         return
     }
 }
-Initialize-Module
+Initialize-SDKPath
