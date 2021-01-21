@@ -1,23 +1,89 @@
-$aaptPath = (Join-Path $PSScriptRoot Tools aapt2) + ($IsWindows ? ".exe" : $null);
-$bundletoolPath = (Join-Path $PSScriptRoot Tools "bundletool-all-1.4.0.jar");
-Set-Alias aapt $aaptPath
+function Get-DefaultSDKPath {
+    if($IsWindows){
+        return Join-Path $env:LOCALAPPDATA Android sdk
+    }
+    elseif ($IsMacOS) {
+        return Join-Path $HOME Library Android sdk
+    }
+    elseif ($IsLinux) {
+        return Join-Path $HOME Android Sdk
+    }
+}
+
+function Install-AndroidCmdTools {
+    param (
+        [Parameter()]
+        [String] $ZipPath,
+        [String] $Destination = $PSScriptRoot,
+        [switch] $Force
+    )
+    $toolsPath = Join-Path $Destination cmdline-tools
+    if (!$Force -and (Test-Path $toolsPath)) {
+        Write-Host "$toolsPath already exists! $Force"
+        return
+    }
+    function Get-CmdLineToolsUrl {
+        $url = "https://dl.google.com/android/repository/commandlinetools-"
+        $url += $IsWindows ? "win" : $IsMacOS ? "mac" : $IsLinux ? "linux" : ""
+        $url += "-6858069_latest.zip"
+        return $url
+    }
+    if (!$PSBoundParameters.ContainsKey('ZipPath')) {
+        $ZipPath = [System.IO.Path]::GetTempFileName()
+        $delete = $true
+    }
+    if (!(Test-Path $ZipPath -PathType Leaf)) {
+        Write-Verbose "Download $ZipPath"
+        Invoke-WebRequest (Get-CmdLineToolsUrl) -OutFile $ZipPath
+    }
+        
+    Write-Verbose "Expand Archive $Destination"
+    Expand-Archive $ZipPath $Destination -Force
+
+    if ($delete) {
+        Remove-Item $ZipPath
+    }
+
+    # .NET cannot mantain Unix file permissions when compressing/extracting
+    # so we need to restore executable right to all of the downloaded scripts
+    if (!$IsWindows) {
+        
+    }
+}
+
 function bundletool {
     java -Xmx1g -jar $bundletoolPath $args
 }
 
 function Get-ApkPermissions($ApkPath) {
-    aapt dump permissions $ApkPath
+    apkAnal manifest permissions $ApkPath
 }
 
-function Get-ApkManifest($ApkPath) {
-    aapt dump badging $ApkPath
+function Get-ApkManifest {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [string] $ApkPath,
+        [ValidateSet("Id","Permissions","VersionName","VersionCode","MinSdk","TargetSdk","Debuggable")]
+        [string] $Value = "print"
+    )
+    $arg = @{
+       'Id' = "application-id"
+       'Permissions' = "permissions"
+       'VersionName' = "version-name"
+       'VersionCode' = "version-code"
+       'MinSdk' = "min-sdk"
+       'TargetSdk' = "target-sdk"
+       "Debuggable" = "debuggable"
+       "print" = "print"
+    }
+    apkAnal manifest $arg["$Value"] $ApkPath
 }
 
 function Get-ApkPackageName($ApkPath) {
-    aapt dump packagename $ApkPath
+    apkAnal manifest application-id $ApkPath
 }
 
-#pnames
 function Get-AndroidDevicePackages {
     adb shell pm list packages -f | ConvertFrom-StringData | Format-Table -AutoSize
 }
@@ -79,7 +145,7 @@ function Install-AndroidApp {
             Write-Host "Success" -ForegroundColor Green
         }
         else {
-            Write-Host "Failure" -ForegroundColor Red
+            Write-Host  -ForegroundColor Red
         }
     }
 
@@ -147,3 +213,25 @@ function Build-APKS {
     return $apksPath
 }
 
+#function Initialize-Module {
+    if($null -eq $env:AndroidSDK){
+        $env:AndroidSDK = Get-DefaultSDKPath
+    }
+    if(!(Test-Path $env:AndroidSDK)){
+        Write-Host "There is no Android SDK at $env:AndroidSDK"
+        Write-Host "Install Android SDK or set the env:AndroidSDK to correct location."
+        return
+    }
+    $cmdToolsPath = Join-Path $env:AndroidSDK cmdline-tools latest bin
+    $toolsPath = Join-Path $env:AndroidSDK Tools bin
+    if(Test-Path $cmdToolsPath){
+        Write-Host setAl
+        set-alias apkAnal (Join-Path $cmdToolsPath apkanalyzer)
+    }
+    elseif (Test-Path $toolsPath) {
+        
+    }
+    else {
+    }
+#}
+#Initialize-Module
