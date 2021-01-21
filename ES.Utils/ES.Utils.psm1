@@ -67,7 +67,7 @@ function Remove-EmptyFolder($path)
     # Exluce folder: If (($subItems -eq $null) -and (-Not($path.contains("DfsrPrivate")))) 
     If ($subItems -eq $null) 
     {
-        Write-Host "Removing empty folder '${path}'"
+        Write-Output "Removing empty folder '${path}'"
         Remove-Item -Force -Recurse:$removeHiddenFiles -LiteralPath $Path -WhatIf:$whatIf
     }
 }
