@@ -91,7 +91,7 @@ function Install-AndroidApp {
             Break
         }
         'aab' {
-            $Path = Export-APKS $Path
+            $Path = Build-APKS $Path
         }
         { 'apks' -or 'aab' } { 
             $deviceIds | ForEach-Object { Install 'apks' $Path $_ }
@@ -102,7 +102,7 @@ function Install-AndroidApp {
     }
 }
 
-function Export-APKS {
+function Build-APKS {
     param (
         [Parameter(Mandatory, ValueFromPipeline)]
         [string] $AabPath,
