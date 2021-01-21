@@ -34,7 +34,6 @@ function Get-ApkManifest {
     }
     apkanalyzer manifest $arg["$Value"] $ApkPath
 }
-
 function Get-AndroidDevicePackages {
     adb shell pm list packages -f | ConvertFrom-StringData | Format-Table -AutoSize
 }
@@ -55,11 +54,10 @@ function Get-AdbDevices {
         $tsv = "Id:" + $tsv
         $tsv = $tsv.Split() | ForEach-Object { FirstCharToUpper($_) } | Join-String -Separator "`n"
         $props = ConvertFrom-StringData -Delimiter ':' -StringData $tsv
-        #$props.Keys | Write-Host
         return [PSCustomObject]$props
     }
-    #return @($result | Format-Table -Property Id, Status, Model, Product)
-    return @($result)
+    
+    @($result)
 }
 
 function Uninstall-AndroidApp {
@@ -84,7 +82,11 @@ function Install-AndroidApp {
     param (
         [Parameter(Mandatory, ValueFromPipeline,
             HelpMessage = "Path to apk, apks or aab file.")]
-        [string] $Path
+        [string] $Path,
+        [Parameter(ParameterSetName = 'AllDevices')]
+        [switch] $AllDevices,
+        [Parameter(ParameterSetName = 'SingleDevice')]
+        [string] $DeviceId = (Get-AdbDevices | Select-Object -First 1)
     )
     function Install($extension, $path, $deviceId) {
         Write-Host "Try Install to $deviceId" -ForegroundColor Yellow
@@ -96,12 +98,12 @@ function Install-AndroidApp {
             Write-Host "Success" -ForegroundColor Green
         }
         else {
-            Write-Host  -ForegroundColor Red
+            Write-Host "Failure" -ForegroundColor Red
         }
     }
 
     $extension = $Path.Split(".")[-1]
-    $deviceIds = Get-AdbDevices | ForEach-Object { $_.Id }
+    $deviceIds = $AllDevices ? (Get-AdbDevices | ForEach-Object { $_.Id }) : $DeviceId
     switch ($extension) {
         'apk' {
             $deviceIds | ForEach-Object { Install $extension $Path $_ };
@@ -164,26 +166,20 @@ function Build-APKS {
     return $apksPath
 }
 
-#function Initialize-Module {
+function Initialize-Module {
     if($null -eq $env:AndroidSDK){
         $env:AndroidSDK = Get-DefaultSDKPath
     }
     Add-Path "$env:AndroidSDK/platform-tools"
-    Add-Path "$env:AndroidSDK/tools/bin"
+    
+    $cmdToolsPath = Join-Path $env:AndroidSDK cmdline-tools latest bin
+    $toolsPath = Join-Path $env:AndroidSDK Tools bin
+    Add-Path ((Test-Path "$cmdToolsPath") ? "$cmdToolsPath" : "$toolsPath")
+
     if(!(Test-Path $env:AndroidSDK)){
         Write-Host "There is no Android SDK at $env:AndroidSDK"
         Write-Host "Install Android SDK or set the env:AndroidSDK to correct location."
         return
     }
-    $cmdToolsPath = Join-Path $env:AndroidSDK cmdline-tools latest bin
-    $toolsPath = Join-Path $env:AndroidSDK Tools bin
-    if(Test-Path $cmdToolsPath){
-        set-alias apkanalyzer (Join-Path $cmdToolsPath apkanalyzer)
-    }
-    elseif (Test-Path $toolsPath) {
-        
-    }
-    else {
-    }
-#}
-#Initialize-Module
+}
+Initialize-Module
