@@ -11,52 +11,7 @@ function Get-DefaultSDKPath {
 }
 
 function Install-AndroidCmdTools {
-    param (
-        [Parameter()]
-        [String] $ZipPath,
-        [String] $Destination = $PSScriptRoot,
-        [switch] $Force
-    )
-    $toolsPath = Join-Path $Destination cmdline-tools
-    if (!$Force -and (Test-Path $toolsPath)) {
-        Write-Host "$toolsPath already exists! $Force"
-        return
-    }
-    function Get-CmdLineToolsUrl {
-        $url = "https://dl.google.com/android/repository/commandlinetools-"
-        $url += $IsWindows ? "win" : $IsMacOS ? "mac" : $IsLinux ? "linux" : ""
-        $url += "-6858069_latest.zip"
-        return $url
-    }
-    if (!$PSBoundParameters.ContainsKey('ZipPath')) {
-        $ZipPath = [System.IO.Path]::GetTempFileName()
-        $delete = $true
-    }
-    if (!(Test-Path $ZipPath -PathType Leaf)) {
-        Write-Verbose "Download $ZipPath"
-        Invoke-WebRequest (Get-CmdLineToolsUrl) -OutFile $ZipPath
-    }
-        
-    Write-Verbose "Expand Archive $Destination"
-    Expand-Archive $ZipPath $Destination -Force
-
-    if ($delete) {
-        Remove-Item $ZipPath
-    }
-
-    # .NET cannot mantain Unix file permissions when compressing/extracting
-    # so we need to restore executable right to all of the downloaded scripts
-    if (!$IsWindows) {
-        
-    }
-}
-
-function bundletool {
-    java -Xmx1g -jar $bundletoolPath $args
-}
-
-function Get-ApkPermissions($ApkPath) {
-    apkAnal manifest permissions $ApkPath
+    sdkmanager "cmdline-tools;latest"
 }
 
 function Get-ApkManifest {
@@ -77,11 +32,7 @@ function Get-ApkManifest {
        "Debuggable" = "debuggable"
        "print" = "print"
     }
-    apkAnal manifest $arg["$Value"] $ApkPath
-}
-
-function Get-ApkPackageName($ApkPath) {
-    apkAnal manifest application-id $ApkPath
+    apkanalyzer manifest $arg["$Value"] $ApkPath
 }
 
 function Get-AndroidDevicePackages {
@@ -217,6 +168,8 @@ function Build-APKS {
     if($null -eq $env:AndroidSDK){
         $env:AndroidSDK = Get-DefaultSDKPath
     }
+    Add-Path "$env:AndroidSDK/platform-tools"
+    Add-Path "$env:AndroidSDK/tools/bin"
     if(!(Test-Path $env:AndroidSDK)){
         Write-Host "There is no Android SDK at $env:AndroidSDK"
         Write-Host "Install Android SDK or set the env:AndroidSDK to correct location."
@@ -225,8 +178,7 @@ function Build-APKS {
     $cmdToolsPath = Join-Path $env:AndroidSDK cmdline-tools latest bin
     $toolsPath = Join-Path $env:AndroidSDK Tools bin
     if(Test-Path $cmdToolsPath){
-        Write-Host setAl
-        set-alias apkAnal (Join-Path $cmdToolsPath apkanalyzer)
+        set-alias apkanalyzer (Join-Path $cmdToolsPath apkanalyzer)
     }
     elseif (Test-Path $toolsPath) {
         
